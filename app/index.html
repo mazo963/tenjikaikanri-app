@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1a56db">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<title>名刺メモ</title>
+<style>
+:root{--bg:#f5f7fa;--fg:#1c2330;--card:#fff;--line:#d9dee7;--pri:#1a56db;--mut:#667085;--err:#c0392b;--warn:#b45309;--warnbg:#fff7e6}
+@media (prefers-color-scheme:dark){:root{--bg:#10141b;--fg:#e8ecf3;--card:#1a212c;--line:#2e3846;--pri:#5b8cff;--mut:#9aa5b5;--warn:#f5b042;--warnbg:#2b2312}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top)) 0 8px}
+h1{font-size:18px;margin:0}
+.badge{font-size:12px;color:var(--mut)}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+h2{font-size:14px;margin:0 0 8px;color:var(--mut);font-weight:600}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+input,textarea,select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
+textarea{min-height:120px;resize:vertical}
+button{font:inherit;border:0;border-radius:12px;padding:12px 16px;background:var(--pri);color:#fff;font-weight:600}
+button.sec{background:transparent;color:var(--pri);border:1px solid var(--pri)}
+button.sm{padding:6px 12px;font-size:14px}
+button:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shot{border:1px dashed var(--line);border-radius:12px;padding:8px;text-align:center;min-height:110px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.shot img{max-width:100%;max-height:140px;border-radius:8px;object-fit:contain;margin:0 auto;display:none}
+#status{min-height:1.4em;font-size:14px;color:var(--mut)}#status.err{color:var(--err)}
+.warn{background:var(--warnbg);border:1px solid var(--warn);color:var(--fg)}
+.warn h2{color:var(--warn)}
+.item{border-top:1px solid var(--line);padding:8px 0;font-size:14px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>📇 名刺メモ</h1>
+  <span class="badge" id="count"></span>
+  <button class="sec sm" id="btnSettings">設定</button>
+</header>
+
+<section id="settings" class="hidden">
+  <h2>接続設定(この端末に保存)</h2>
+  <label>GAS ウェブアプリURL</label><input id="cfgUrl" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec">
+  <label>合言葉(GASのTOKEN)</label><input id="cfgToken" type="password">
+  <label>展示会名(メール文面・シートに使用)</label><input id="cfgEvent" placeholder="例: 〇〇EXPO 2026">
+  <h2 style="margin-top:16px">お礼メールの文体</h2>
+  <div class="grid">
+    <div><label>丁寧さ</label>
+      <select id="cfgTone"><option value="formal">とても丁寧</option><option value="standard">標準</option><option value="friendly">親しみやすい</option></select></div>
+    <div><label>長さ</label>
+      <select id="cfgLength"><option value="short">短め</option><option value="standard">標準</option><option value="long">詳しめ</option></select></div>
+  </div>
+  <label>署名(空欄ならGAS側の既定署名)</label><textarea id="cfgSig" style="min-height:90px" placeholder="株式会社〇〇&#10;営業部 山田 太郎&#10;TEL: 03-xxxx-xxxx"></textarea>
+  <label>追加指示(任意)</label><input id="cfgExtra" placeholder="例: 来月のセミナー案内も一言添える">
+  <div class="row" style="margin-top:12px">
+    <button class="sec" id="btnTest">接続テスト</button>
+    <button id="btnSaveCfg">保存</button>
+  </div>
+</section>
+
+<section id="queueBox" class="hidden">
+  <h2>保留中(<span id="qn">0</span>件)</h2>
+  <div id="queueList"></div>
+</section>
+
+<section>
+  <h2>① 名刺を撮影(裏面は任意)</h2>
+  <input id="file1" type="file" accept="image/*" capture="environment" class="hidden">
+  <input id="file2" type="file" accept="image/*" capture="environment" class="hidden">
+  <div class="shots">
+    <div class="shot"><img id="pv1" alt="表"><button id="btnShoot1">📷 表面</button></div>
+    <div class="shot"><img id="pv2" alt="裏"><button class="sec" id="btnShoot2">📷 裏面</button></div>
+  </div>
+</section>
+
+<section>
+  <h2>② 話した内容</h2>
+  <textarea id="memo" placeholder="例: 工場の検査工程の自動化に関心。来月デモ希望。担当は部長の佐藤さん。"></textarea>
+  <div class="row" style="margin-top:8px"><button class="sec" id="btnMic">🎤 音声入力</button></div>
+</section>
+
+<div class="row">
+  <button class="sec" id="btnHold" style="padding:14px">保留して次へ</button>
+  <button id="btnAnalyze" style="padding:14px">AIで解析する</button>
+</div>
+<p id="status"></p>
+
+<section id="dup" class="warn hidden">
+  <h2>⚠ 登録済みの可能性があります</h2>
+  <div id="dupList"></div>
+  <div class="row" style="margin-top:10px">
+    <button id="btnMerge">既存の行に追記</button>
+    <button class="sec" id="btnNew">別人として新規登録</button>
+  </div>
+  <div style="margin-top:8px"><button class="sec" id="btnDupCancel" style="width:100%">戻って修正</button></div>
+</section>
+
+<section id="result" class="hidden">
+  <h2>③ 確認・修正</h2>
+  <div class="grid">
+    <div><label>氏名</label><input id="f_name"></div>
+    <div><label>ふりがな</label><input id="f_kana"></div>
+    <div><label>会社名</label><input id="f_company"></div>
+    <div><label>部署・役職</label><input id="f_title"></div>
+    <div><label>メール</label><input id="f_email" type="email"></div>
+    <div><label>電話</label><input id="f_phone" type="tel"></div>
+  </div>
+  <label>住所</label><input id="f_address">
+  <label>URL</label><input id="f_url">
+  <label>温度感</label>
+  <select id="f_temp"><option>高</option><option>中</option><option>低</option></select>
+  <label>商談要約</label><textarea id="f_summary"></textarea>
+  <label>次のアクション</label><input id="f_next">
+  <label>メール件名</label><input id="f_subject">
+  <label>メール本文(下書き)</label><textarea id="f_body" style="min-height:260px"></textarea>
+  <div class="row" style="margin-top:12px"><button id="btnSave">スプレッドシート登録 + Gmail下書き</button></div>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
