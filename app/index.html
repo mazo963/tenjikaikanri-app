@@ -35,6 +35,16 @@ button:disabled{opacity:.5}
 .warn h2{color:var(--warn)}
 .item{border-top:1px solid var(--line);padding:8px 0;font-size:14px}
 .hidden{display:none}
+nav.row{margin:4px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+.card .hd{cursor:pointer}
+.card .nm{font-weight:600}.card .sub{font-size:13px;color:var(--mut)}
+.tag{display:inline-block;font-size:12px;border-radius:8px;padding:0 8px;margin-left:6px;border:1px solid var(--line)}
+.tag.hi{color:#fff;background:#d9480f;border-color:#d9480f}.tag.mid{color:var(--warn);border-color:var(--warn)}
+.detail{margin-top:10px;font-size:14px;border-top:1px solid var(--line);padding-top:8px}
+.detail dt{font-size:12px;color:var(--mut);margin-top:8px}.detail dd{margin:0;white-space:pre-wrap;word-break:break-word}
+.detail a{color:var(--pri)}
+.detail textarea{min-height:150px;font-size:14px}
 </style>
 </head>
 <body>
@@ -64,6 +74,12 @@ button:disabled{opacity:.5}
   </div>
 </section>
 
+<nav class="row">
+  <button id="tabReg">登録</button>
+  <button id="tabList" class="sec">一覧</button>
+</nav>
+
+<div id="viewReg">
 <section id="queueBox" class="hidden">
   <h2>保留中(<span id="qn">0</span>件)</h2>
   <div id="queueList"></div>
@@ -121,6 +137,19 @@ button:disabled{opacity:.5}
   <label>メール本文(下書き)</label><textarea id="f_body" style="min-height:260px"></textarea>
   <div class="row" style="margin-top:12px"><button id="btnSave">スプレッドシート登録 + Gmail下書き</button></div>
 </section>
+
+</div>
+
+<div id="viewList" class="hidden">
+  <section>
+    <div class="row">
+      <input id="q" type="search" placeholder="検索(氏名・会社・内容・展示会)" style="flex:3">
+      <button class="sec" id="btnReload" style="flex:1">更新</button>
+    </div>
+    <p class="badge" id="listInfo" style="margin:8px 0 0"></p>
+  </section>
+  <div id="listBox"></div>
+</div>
 
 <script src="app.js"></script>
 </body>

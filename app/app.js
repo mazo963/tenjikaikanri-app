@@ -165,8 +165,9 @@ async function doSave(dupMode, mergeRow) {
       $('dup').classList.remove('hidden'); $('dup').scrollIntoView({ behavior: 'smooth' });
       status('重複候補が見つかりました', true);
     } else {
-      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') + (j.draft ? '。Gmail下書きを作成済み' : '(メール無しのため下書きなし)'));
-      bumpCount(); resetForm(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') +
+        (!j.draft ? '(下書きは作成されませんでした。一覧から作成できます)' : j.noAddress ? '。Gmail下書きを作成(宛先が未取得のため、Gmailで入力してください)' : '。Gmail下書きを作成済み'));
+      listLoaded = false; bumpCount(); resetForm(); window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   } catch (e) { status(e.message, true); }
   setBusy(false);
@@ -175,5 +176,93 @@ $('btnSave').onclick = () => { if (!busy) doSave('', ''); };
 $('btnMerge').onclick = () => { if (!busy) doSave('merge', matches[0].row); };
 $('btnNew').onclick = () => { if (!busy) doSave('new', ''); };
 $('btnDupCancel').onclick = () => { $('dup').classList.add('hidden'); status(''); };
+
+// ---------- 一覧(保存済みの名刺をスマホで確認) ----------
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function safeUrls(s) { return String(s || '').split(/\s+/).filter(u => /^https:\/\//.test(u)); }
+let listLoaded = false, statuses = [];
+
+function showTab(t) {
+  $('viewReg').classList.toggle('hidden', t !== 'reg');
+  $('viewList').classList.toggle('hidden', t !== 'list');
+  $('tabReg').className = t === 'reg' ? '' : 'sec'; $('tabList').className = t === 'list' ? '' : 'sec';
+  if (t === 'list' && !listLoaded) loadList();
+}
+$('tabReg').onclick = () => showTab('reg');
+$('tabList').onclick = () => showTab('list');
+$('btnReload').onclick = () => loadList();
+let qTimer = null;
+$('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(loadList, 500); };
+
+async function loadList() {
+  $('listInfo').textContent = '読み込み中…';
+  try {
+    const j = await api({ action: 'list', q: $('q').value.trim(), limit: 50 });
+    statuses = j.statuses || []; listLoaded = true;
+    $('listInfo').textContent = `全${j.total}件中 ${j.items.length}件を表示(新しい順)`;
+    $('listBox').innerHTML = '';
+    j.items.forEach(it => $('listBox').append(renderCard(it)));
+  } catch (e) { $('listInfo').textContent = e.message; }
+}
+
+function dl(parent, label, value) { if (!value) return; parent.append(el('dt', '', label), el('dd', '', value)); }
+
+function renderCard(it) {
+  const card = el('div', 'card'), hd = el('div', 'hd');
+  const nm = el('div', 'nm', `${it.company} ${it.name}`);
+  if (it.temp) nm.append(el('span', 'tag ' + (it.temp === '高' ? 'hi' : it.temp === '中' ? 'mid' : ''), it.temp));
+  hd.append(nm, el('div', 'sub', `${it.date} ${it.event} / ${it.status || '未対応'}`));
+  if (it.next) hd.append(el('div', 'sub', '次: ' + it.next));
+  const detail = el('div', 'detail hidden');
+  let built = false;
+  hd.onclick = () => { if (!built) { buildDetail(detail, it); built = true; } detail.classList.toggle('hidden'); };
+  card.append(hd, detail);
+  return card;
+}
+
+function buildDetail(box, it) {
+  const d = el('dl'); d.style.margin = '0';
+  dl(d, '部署・役職', it.title); dl(d, 'ふりがな', it.kana);
+  if (it.email) { const a = el('a', '', it.email); a.href = 'mailto:' + it.email; d.append(el('dt', '', 'メール'), (() => { const x = el('dd'); x.append(a); return x; })()); }
+  if (it.phone) { const a = el('a', '', it.phone); a.href = 'tel:' + it.phone.replace(/[^\d+]/g, ''); d.append(el('dt', '', '電話'), (() => { const x = el('dd'); x.append(a); return x; })()); }
+  dl(d, '住所', it.address); dl(d, 'URL', it.url);
+  dl(d, '商談要約', it.summary); dl(d, '次のアクション', it.next); dl(d, '話した内容', it.memo);
+  const imgs = [...safeUrls(it.front).map(u => ['名刺(表)', u]), ...safeUrls(it.back).map(u => ['名刺(裏)', u])];
+  if (imgs.length) {
+    const dd = el('dd'); imgs.forEach(([t, u]) => { const a = el('a', '', t + ' を開く'); a.href = u; a.target = '_blank'; a.rel = 'noopener'; dd.append(a, el('br')); });
+    d.append(el('dt', '', '名刺画像(Googleドライブ)'), dd);
+  }
+  box.append(d);
+
+  // 対応状況の変更
+  const sel = el('select'); sel.style.marginTop = '8px';
+  statuses.forEach(s => { const o = el('option', '', s); o.value = s; if (s === (it.status || '未対応')) o.selected = true; sel.append(o); });
+  sel.onchange = async () => {
+    try { await api({ action: 'setStatus', id: it.id, row: it.row, status: sel.value }); it.status = sel.value; status('対応状況を更新しました'); }
+    catch (e) { status(e.message, true); }
+  };
+  const sl = el('div', 'sub', '対応状況'); sl.style.marginTop = '8px';
+  box.append(sl, sel);
+
+  // メール文面と下書き
+  if (it.body) {
+    const l = el('div', 'sub', 'お礼メール文面'); l.style.marginTop = '10px';
+    const ta = el('textarea'); ta.readOnly = true; ta.value = (it.subject ? '件名: ' + it.subject + '\n\n' : '') + it.body;
+    box.append(l, ta);
+    const row = el('div', 'row'); row.style.marginTop = '8px';
+    const cp = el('button', 'sec sm', 'コピー');
+    cp.onclick = async () => { try { await navigator.clipboard.writeText(ta.value); status('コピーしました'); } catch { ta.select(); status('選択しました。コピーしてください'); } };
+    const mk = el('button', 'sm', it.draft ? 'Gmail下書きを再作成' : 'Gmail下書きを作成');
+    mk.onclick = async () => {
+      mk.disabled = true;
+      try { const j = await api({ action: 'makeDraft', id: it.id, row: it.row }); status(j.noAddress ? '✅ 下書きを作成しました(宛先は未設定)' : '✅ 下書きを作成しました'); it.draft = '作成済'; mk.textContent = 'Gmail下書きを再作成'; }
+      catch (e) { status(e.message, true); }
+      mk.disabled = false;
+    };
+    row.append(cp, mk); box.append(row);
+  } else {
+    const n = el('div', 'sub', 'メール文面は保存されていません(古い形式の登録)'); n.style.marginTop = '8px'; box.append(n);
+  }
+}
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
