@@ -11,7 +11,8 @@ function status(msg, err) { const s = $('status'); s.textContent = msg; s.classN
 function setBusy(b) { busy = b; ['btnAnalyze', 'btnSave', 'btnHold', 'btnMerge', 'btnNew'].forEach(i => $(i).disabled = b); }
 
 // ---------- 設定 ----------
-const CFG = { url: 'cfgUrl', token: 'cfgToken', event: 'cfgEvent', tone: 'cfgTone', length: 'cfgLength', sig: 'cfgSig', extra: 'cfgExtra' };
+const CFG = { url: 'cfgUrl', token: 'cfgToken', event: 'cfgEvent', tone: 'cfgTone', length: 'cfgLength', sig: 'cfgSig', extra: 'cfgExtra', mail: 'cfgMail' };
+function mailMode() { return store.get('mail') || 'gmail'; }
 Object.entries(CFG).forEach(([k, id]) => { const v = store.get(k); if (v) $(id).value = v; });
 if (!store.get('url')) $('settings').classList.remove('hidden');
 $('btnSettings').onclick = () => $('settings').classList.toggle('hidden');
@@ -22,9 +23,45 @@ $('btnSaveCfg').onclick = () => {
 $('btnTest').onclick = async () => {
   store.set('url', $('cfgUrl').value.trim()); store.set('token', $('cfgToken').value);
   status('接続テスト中…');
-  try { const j = await api({ action: 'ping' }); status(j.hasKey ? '✅ 接続OK(APIキー設定済み)' : '⚠ 接続OKですが CLAUDE_API_KEY が未設定です', !j.hasKey); }
-  catch (e) { status(e.message, true); }
+  try {
+    const j = await api({ action: 'ping' });
+    if (!j.hasKey) return status('⚠ 接続OKですが CLAUDE_API_KEY が未設定です', true);
+    const sel = $('cfgMail').value;
+    if (j.gmail === false && sel === 'gmail') return status('⚠ 接続OK。ただし、このGoogleアカウントではGmailが使えません。「メール方式」を「メールアプリで開く」にしてください', true);
+    status('✅ 接続OK(APIキー設定済み・Gmail' + (j.gmail === false ? '利用不可' : '利用可') + ')');
+  } catch (e) { status(e.message, true); }
 };
+// ---------- メールアプリで開く(Outlook等。mailto:) ----------
+const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+function mailtoUrl(to, subject, body) {
+  const addr = String(to || '').trim();
+  return 'mailto:' + (EMAIL_RE.test(addr) ? addr : '') + '?subject=' + encodeURIComponent(subject || '') +
+    '&body=' + encodeURIComponent(String(body || '').replace(/\r?\n/g, '\r\n'));
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); status('コピーしました'); return true; }
+  catch { status('コピーできませんでした。文面を長押しして、手動でコピーしてください', true); return false; }
+}
+function linkBtn(text, href, secondary) {
+  const a = document.createElement('a'); a.textContent = text; a.href = href;
+  a.style.cssText = 'display:block;text-align:center;text-decoration:none;border-radius:12px;padding:6px 12px;font-size:14px;font-weight:600;' +
+    (secondary ? 'color:var(--pri);border:1px solid var(--pri)' : 'background:var(--pri);color:#fff');
+  return a;
+}
+let mailCtx = null;
+function showMailBox(d) {
+  mailCtx = { subject: d.subject || '', body: d.body || '' };
+  const url = mailtoUrl(d.email, d.subject, d.body);
+  $('mailTo').textContent = '宛先: ' + (EMAIL_RE.test((d.email || '').trim()) ? d.email.trim() : '(未取得。メールアプリで入力してください)') + ' / 件名: ' + (d.subject || '');
+  $('btnMailto').href = url;
+  $('mailNote').textContent = url.length > 1800
+    ? '文面が長いため、メールアプリで本文が途中で切れる場合があります。その場合は「コピー」で貼り付けてください。'
+    : 'Outlookで開くには、スマホの「既定のメールアプリ」をOutlookにしてください(iPhone: 設定 → アプリ → メール → 既定のメールアプリ)。';
+  $('mailDone').classList.remove('hidden'); $('mailDone').scrollIntoView({ behavior: 'smooth' });
+}
+$('btnMailCopy').onclick = () => { if (mailCtx) copyText((mailCtx.subject ? '件名: ' + mailCtx.subject + '\n\n' : '') + mailCtx.body); };
+$('btnMailClose').onclick = () => { $('mailDone').classList.add('hidden'); mailCtx = null; status(''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
 function style() { return { tone: store.get('tone') || 'standard', length: store.get('length') || 'standard', signature: store.get('sig'), extra: store.get('extra') }; }
 
 // ---------- 今日の登録数 ----------
@@ -139,7 +176,7 @@ function formData() { const d = {}; FIELDS.forEach(k => d[k] = $('f_' + k).value
 $('btnAnalyze').onclick = async () => {
   if (busy) return;
   if (!images.front && !images.back && !$('memo').value.trim()) return status('名刺画像か話した内容を入力してください', true);
-  setBusy(true); status('解析中…(10〜30秒)');
+  setBusy(true); status('解析中…(10〜30秒)'); $('mailDone').classList.add('hidden');
   try {
     const j = await api({ action: 'analyze', images, memo: $('memo').value, event: store.get('event'), style: style() });
     FIELDS.forEach(k => $('f_' + k).value = j.data[k] || (k === 'temp' ? '中' : ''));
@@ -153,7 +190,8 @@ $('btnAnalyze').onclick = async () => {
 async function doSave(dupMode, mergeRow) {
   setBusy(true); status('登録中…');
   try {
-    const j = await api({ action: 'save', data: formData(), memo: $('memo').value, images, event: store.get('event'), dupMode, mergeRow });
+    const d = formData();
+    const j = await api({ action: 'save', data: d, memo: $('memo').value, images, event: store.get('event'), dupMode, mergeRow, mailMode: mailMode() });
     if (j.duplicate) {
       matches = j.matches;
       $('dupList').innerHTML = '';
@@ -165,9 +203,14 @@ async function doSave(dupMode, mergeRow) {
       $('dup').classList.remove('hidden'); $('dup').scrollIntoView({ behavior: 'smooth' });
       status('重複候補が見つかりました', true);
     } else {
-      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') +
-        (!j.draft ? '(下書きは作成されませんでした。一覧から作成できます)' : j.noAddress ? '。Gmail下書きを作成(宛先が未取得のため、Gmailで入力してください)' : '。Gmail下書きを作成済み'));
-      listLoaded = false; bumpCount(); resetForm(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      const mode = j.mailMode || mailMode();
+      const tail = mode === 'none' ? ''
+        : mode === 'app' ? '。下の「メールアプリで開く」でお礼メールを作成してください'
+        : j.draft ? (j.noAddress ? '。Gmail下書きを作成(宛先が未取得のため、Gmailで入力してください)' : '。Gmail下書きを作成済み')
+        : '(Gmail下書きは作成されませんでした。Outlook等をお使いなら、設定の「メール方式」を「メールアプリで開く」に変更してください)';
+      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') + tail);
+      listLoaded = false; bumpCount(); resetForm();
+      if (mode === 'app' && d.body) showMailBox(d); else window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   } catch (e) { status(e.message, true); }
   setBusy(false);
@@ -251,7 +294,8 @@ function buildDetail(box, it) {
     box.append(l, ta);
     const row = el('div', 'row'); row.style.marginTop = '8px';
     const cp = el('button', 'sec sm', 'コピー');
-    cp.onclick = async () => { try { await navigator.clipboard.writeText(ta.value); status('コピーしました'); } catch { ta.select(); status('選択しました。コピーしてください'); } };
+    cp.onclick = async () => { if (!(await copyText(ta.value))) ta.select(); };
+    const ma = linkBtn('メールアプリで開く', mailtoUrl(it.email, it.subject, it.body), mailMode() === 'gmail');
     const mk = el('button', 'sm', it.draft ? 'Gmail下書きを再作成' : 'Gmail下書きを作成');
     mk.onclick = async () => {
       mk.disabled = true;
@@ -259,7 +303,7 @@ function buildDetail(box, it) {
       catch (e) { status(e.message, true); }
       mk.disabled = false;
     };
-    row.append(cp, mk); box.append(row);
+    row.append(cp, ma); if (mailMode() === 'gmail') row.append(mk); box.append(row);
   } else {
     const n = el('div', 'sub', 'メール文面は保存されていません(古い形式の登録)'); n.style.marginTop = '8px'; box.append(n);
   }

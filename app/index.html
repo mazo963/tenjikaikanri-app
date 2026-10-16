@@ -68,6 +68,12 @@ nav.row{margin:4px 0}
   </div>
   <label>署名(空欄ならGAS側の既定署名)</label><textarea id="cfgSig" style="min-height:90px" placeholder="株式会社〇〇&#10;営業部 山田 太郎&#10;TEL: 03-xxxx-xxxx"></textarea>
   <label>追加指示(任意)</label><input id="cfgExtra" placeholder="例: 来月のセミナー案内も一言添える">
+  <label>メール方式(お礼メールの作り方)</label>
+  <select id="cfgMail">
+    <option value="gmail">Gmail下書きを作成(Gmailをお使いの方)</option>
+    <option value="app">メールアプリで開く(Outlook等をお使いの方)</option>
+    <option value="none">メールは作成しない</option>
+  </select>
   <div class="row" style="margin-top:12px">
     <button class="sec" id="btnTest">接続テスト</button>
     <button id="btnSaveCfg">保存</button>
@@ -106,6 +112,17 @@ nav.row{margin:4px 0}
   <button id="btnAnalyze" style="padding:14px">AIで解析する</button>
 </div>
 <p id="status"></p>
+
+<section id="mailDone" class="hidden" style="border-color:var(--pri)">
+  <h2>✉️ お礼メールを作成</h2>
+  <div class="sub" id="mailTo" style="font-size:14px;margin-bottom:8px"></div>
+  <div class="row">
+    <a class="btn" id="btnMailto" href="#" style="display:block;text-align:center;text-decoration:none;background:var(--pri);color:#fff;border-radius:12px;padding:12px 16px;font-weight:600">メールアプリで開く</a>
+    <button class="sec" id="btnMailCopy">文面をコピー</button>
+  </div>
+  <p class="badge" id="mailNote" style="margin:8px 0 0"></p>
+  <div style="margin-top:8px"><button class="sec sm" id="btnMailClose" style="width:100%">閉じる(次の名刺へ)</button></div>
+</section>
 
 <section id="dup" class="warn hidden">
   <h2>⚠ 登録済みの可能性があります</h2>
