@@ -26,6 +26,7 @@ $('btnTest').onclick = async () => {
   try {
     const j = await api({ action: 'ping' });
     if (!j.hasKey) return status('⚠ 接続OKですが CLAUDE_API_KEY が未設定です', true);
+    if (j.net) return status('⚠ 接続OK。ただし、このGoogleアカウントでは、AIへの通信(UrlFetch)が使えません(' + String(j.net).slice(0, 90) + ')。24時間後にもう一度試すか、別のGoogleアカウントで設置してください', true);
     const sel = $('cfgMail').value;
     if (j.gmail === false && sel === 'gmail') return status('⚠ 接続OK。ただし、このGoogleアカウントではGmailが使えません。「メール方式」を「メールアプリで開く」にしてください', true);
     status('✅ 接続OK(APIキー設定済み・Gmail' + (j.gmail === false ? '利用不可' : '利用可') + ')');
