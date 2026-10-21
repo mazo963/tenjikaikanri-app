@@ -92,18 +92,70 @@ function showImg(side) {
   };
 });
 
-// ---------- 音声入力 ----------
+// ---------- 音声入力(長く話しても途切れない。自動で再開) ----------
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null;
-if (!SR) $('btnMic').style.display = 'none';
-$('btnMic').onclick = () => {
-  if (rec) { rec.stop(); return; }
-  rec = new SR(); rec.lang = 'ja-JP'; rec.continuous = true; rec.interimResults = false;
-  rec.onresult = ev => { for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) $('memo').value += ev.results[i][0].transcript + '\n'; };
-  rec.onend = () => { rec = null; $('btnMic').textContent = '🎤 音声入力'; };
-  rec.onerror = () => status('音声入力に失敗しました(マイク許可を確認)', true);
-  rec.start(); $('btnMic').textContent = '⏹ 停止';
-};
+const MIC_MAX_SEC = 600;
+let rec = null, recOn = false, recLive = false, micBase = '', micInterim = '', micT0 = 0, micTimer = null, micFails = 0, wake = null;
+function micJoin(base, text) { return !text ? base : base + (base && !/\n$/.test(base) ? '\n' : '') + text; }
+function micUi() {
+  $('btnMic').textContent = recOn ? '⏹ 停止' : '🎤 録音して話す';
+  $('btnMic').classList.toggle('rec', recOn);
+  $('micLive').classList.toggle('hidden', !recOn);
+  if (!recOn) $('micInterim').textContent = '';
+}
+function micTick() {
+  const s = Math.floor((Date.now() - micT0) / 1000);
+  $('micTime').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  if (s >= MIC_MAX_SEC) { stopMic(); status('10分たったので、録音を止めました', true); }
+}
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator && !wake) wake = await navigator.wakeLock.request('screen');
+    else if (!on && wake) { await wake.release(); wake = null; }
+  } catch { wake = null; }
+}
+function commitInterim() { if (micInterim) { $('memo').value = micJoin($('memo').value, micInterim); micInterim = ''; $('micInterim').textContent = ''; } }
+function beginRec() {
+  if (!recOn || recLive) return;
+  micBase = $('memo').value;
+  const r = new SR(); rec = r; r.lang = 'ja-JP'; r.continuous = true; r.interimResults = true;
+  let started = Date.now();
+  r.onstart = () => { recLive = true; };
+  r.onresult = ev => {
+    let fin = '', itm = '';
+    for (let i = 0; i < ev.results.length; i++) { const t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fin += t; else itm += t; }
+    $('memo').value = micJoin(micBase, fin); micInterim = itm; $('micInterim').textContent = itm; micFails = 0;
+  };
+  r.onerror = ev => {
+    if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { stopMic(); status('この環境では、音声入力が使えません。マイクの許可を確認するか、キーボードのマイク(🎤)で話して入力してください', true); }
+    else if (ev.error === 'audio-capture') { stopMic(); status('マイクが見つかりません。他のアプリがマイクを使っていないか、確認してください', true); }
+    else if (ev.error === 'network') { micFails++; }
+  };
+  r.onend = () => {
+    recLive = false; commitInterim();
+    if (!recOn) return;
+    micFails = Date.now() - started < 1000 ? micFails + 1 : 0;
+    if (micFails >= 4) { stopMic(); status('音声入力が、うまく続きません。電波とマイクを確認して、もう一度押してください', true); return; }
+    setTimeout(beginRec, 300);
+  };
+  try { r.start(); } catch { recLive = false; setTimeout(beginRec, 500); }
+}
+function startMic() {
+  recOn = true; micFails = 0; micT0 = Date.now(); micTick(); micTimer = setInterval(micTick, 1000);
+  micUi(); keepAwake(true); status(''); beginRec();
+}
+function stopMic() {
+  if (!recOn && !rec) return;
+  recOn = false; clearInterval(micTimer); micTimer = null;
+  try { rec && rec.stop(); } catch {}
+  commitInterim(); micUi(); keepAwake(false);
+}
+if (!SR) { $('btnMic').style.display = 'none'; $('micNote').textContent = 'この端末では、録音ボタンが使えません。キーボードのマイク(🎤)で話すと、文字で入ります。'; }
+$('btnMic').onclick = () => { recOn ? stopMic() : startMic(); };
+$('memo').addEventListener('focus', () => { if (recOn) stopMic(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && recOn) { keepAwake(true); beginRec(); }
+});
 
 // ---------- 保留キュー(IndexedDB。電波が悪い会場でも撮り溜め可能) ----------
 const idb = new Promise(res => {
@@ -145,11 +197,13 @@ async function renderQueue() {
 renderQueue();
 
 function resetForm() {
+  stopMic();
   images.front = images.back = ''; showImg('front'); showImg('back');
   $('memo').value = ''; $('file1').value = ''; $('file2').value = '';
   $('result').classList.add('hidden'); $('dup').classList.add('hidden');
 }
 $('btnHold').onclick = async () => {
+  stopMic();
   if (!images.front && !images.back && !$('memo').value.trim()) return status('保留する内容がありません', true);
   try {
     await tx('readwrite', s => s.add({ images: { ...images }, memo: $('memo').value, at: Date.now() }));
@@ -176,6 +230,7 @@ function formData() { const d = {}; FIELDS.forEach(k => d[k] = $('f_' + k).value
 
 $('btnAnalyze').onclick = async () => {
   if (busy) return;
+  stopMic();
   if (!images.front && !images.back && !$('memo').value.trim()) return status('名刺画像か話した内容を入力してください', true);
   setBusy(true); status('解析中…(10〜30秒)'); $('mailDone').classList.add('hidden');
   try {
