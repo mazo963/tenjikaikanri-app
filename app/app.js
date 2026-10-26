@@ -32,6 +32,43 @@ $('btnTest').onclick = async () => {
     status('✅ 接続OK(APIキー設定済み・Gmail' + (j.gmail === false ? '利用不可' : '利用可') + ')');
   } catch (e) { status(e.message, true); }
 };
+// ---------- かんたん設定(スプレッドシートのメニューで作った「設定コード」を貼るだけ) ----------
+function decodeSetup(raw) {
+  try {
+    let c = String(raw || '').trim();
+    const m = c.match(/setup=([^&\s]+)/); if (m) c = m[1];
+    c = c.replace(/^M1\./, '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+    const bin = atob(c + '='.repeat((4 - c.length % 4) % 4));
+    const j = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))));
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(j.u) || !j.t) return null;
+    return { url: j.u, token: String(j.t) };
+  } catch { return null; }
+}
+function applySetup(raw) {
+  const s = decodeSetup(raw);
+  if (!s) { status('設定コードが正しくありません。コピーし直してください(M1. で始まる文字です)', true); return false; }
+  const cur = store.get('url');
+  if (!confirm('設定コードを読み込みます。\n送信先: …' + s.url.slice(-20) + (cur && cur !== s.url ? '\n\n※ いま設定済みのURLと違います。上書きします。' : '') + '\n\n自分のスプレッドシートで作った、設定コードですか?')) return false;
+  store.set('url', s.url); store.set('token', s.token);
+  $('cfgUrl').value = s.url; $('cfgToken').value = s.token; $('cfgCode').value = '';
+  $('settings').classList.add('hidden');
+  status('設定コードを読み込みました。接続テストをします…');
+  $('btnTest').click();
+  return true;
+}
+$('btnPasteCode').onclick = async () => {
+  let t = '';
+  try { t = await Promise.race([navigator.clipboard.readText(), new Promise((_, ng) => setTimeout(ng, 4000))]); } catch {}
+  if (!t) { $('cfgCode').focus(); return status('コピーした内容が読み取れません。下の欄を長押しして、貼り付けてください', true); }
+  applySetup(t);
+};
+$('cfgCode').oninput = () => { if (decodeSetup($('cfgCode').value)) applySetup($('cfgCode').value); };
+if (/setup=/.test(location.hash)) {
+  const h = location.hash;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+  setTimeout(() => applySetup(h), 0);
+}
+
 // ---------- メールアプリで開く(Outlook等。mailto:) ----------
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 function mailtoUrl(to, subject, body) {

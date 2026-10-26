@@ -61,7 +61,12 @@ nav.row{margin:4px 0}
 </header>
 
 <section id="settings" class="hidden">
-  <h2>接続設定(この端末に保存)</h2>
+  <h2>かんたん設定</h2>
+  <p class="badge" style="margin:0 0 8px">スプレッドシートのメニュー「名刺メモ → ③ スマホ用の設定コード」でコピーした、設定コードを貼り付けます。</p>
+  <button id="btnPasteCode" style="width:100%">📋 設定コードを貼り付けて設定</button>
+  <input id="cfgCode" placeholder="貼り付けできないときは、ここに貼る(M1.…)" autocomplete="off" style="margin-top:8px">
+  <h2 style="margin-top:16px">接続設定(この端末に保存)</h2>
+  <p class="badge" style="margin:0 0 8px">上の「かんたん設定」を使わない場合は、URLと合言葉を、直接入れます。</p>
   <label>GAS ウェブアプリURL</label><input id="cfgUrl" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec">
   <label>合言葉(GASのTOKEN)</label><input id="cfgToken" type="password">
   <label>展示会名(メール文面・シートに使用)</label><input id="cfgEvent" placeholder="例: 〇〇EXPO 2026">
