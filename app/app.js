@@ -100,6 +100,40 @@ function showMailBox(d) {
 $('btnMailCopy').onclick = () => { if (mailCtx) copyText((mailCtx.subject ? '件名: ' + mailCtx.subject + '\n\n' : '') + mailCtx.body); };
 $('btnMailClose').onclick = () => { $('mailDone').classList.add('hidden'); mailCtx = null; status(''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
+// ---------- 資料の自動添付(GASのシート「資料」) ----------
+let docsCache = null, docsTouched = {};
+async function loadDocs() {
+  if (docsCache) return docsCache;
+  try { docsCache = (await api({ action: 'docs' })).docs || []; } catch (e) { if (/unknown action|不明/i.test(e.message)) docsCache = []; else return []; }   // 古いGASでは、この機能は出ない
+  return docsCache;
+}
+function docAuto(d, temp) { const a = (d.auto || '').split(','); return a.includes('全員') || a.includes(temp); }
+function renderDocs() {
+  const list = docsCache || [];
+  $('docBox').classList.toggle('hidden', !list.length);
+  $('docList').innerHTML = '';
+  list.forEach(d => {
+    const lb = el('label', 'chk'); lb.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-weight:400';
+    const cb = el('input'); cb.type = 'checkbox'; cb.dataset.row = d.row; cb.disabled = !d.ok;
+    cb.checked = d.ok && (docsTouched[d.row] != null ? docsTouched[d.row] : docAuto(d, $('f_temp').value));
+    cb.onchange = () => { docsTouched[d.row] = cb.checked; showDocNote(); };
+    lb.append(cb, el('span', '', (d.kind === 'リンク' ? '🔗 ' : '📎 ') + d.name + (d.note ? '  ' + d.note : '')));
+    $('docList').append(lb);
+  });
+  showDocNote();
+}
+function selectedDocs() { return [...$('docList').querySelectorAll('input:checked')].map(c => +c.dataset.row); }
+function showDocNote() {
+  const n = selectedDocs().length;
+  $('docNote').textContent = !n ? '' : mailMode() === 'gmail' ? n + '件を、Gmail下書きに付けます(「リンク」は、本文の末尾に入ります)'
+    : mailMode() === 'app' ? '「メールアプリで開く」では添付できないため、リンクとして本文に入れます' : '';
+}
+$('f_temp').onchange = () => renderDocs();
+function docLinks(rows) {   // メールアプリ方式用: 選んだ資料を、本文の末尾にリンクで入れる
+  const l = (docsCache || []).filter(d => rows.includes(d.row) && d.url).map(d => '・' + d.name + '\n  ' + d.url);
+  return l.length ? '\n\n■ご参考資料\n' + l.join('\n') : '';
+}
+
 function style() { return { tone: store.get('tone') || 'standard', length: store.get('length') || 'standard', signature: store.get('sig'), extra: store.get('extra') }; }
 
 // ---------- 今日の登録数 ----------
@@ -276,6 +310,7 @@ $('btnAnalyze').onclick = async () => {
     $('dup').classList.add('hidden');
     $('result').classList.remove('hidden'); $('result').scrollIntoView({ behavior: 'smooth' });
     status('内容を確認して登録してください');
+    docsTouched = {}; renderDocs(); loadDocs().then(renderDocs);
   } catch (e) { status(e.message, true); }
   setBusy(false);
 };
@@ -283,8 +318,8 @@ $('btnAnalyze').onclick = async () => {
 async function doSave(dupMode, mergeRow) {
   setBusy(true); status('登録中…');
   try {
-    const d = formData();
-    const j = await api({ action: 'save', data: d, memo: $('memo').value, images, event: store.get('event'), dupMode, mergeRow, mailMode: mailMode() });
+    const d = formData(), attach = selectedDocs();
+    const j = await api({ action: 'save', data: d, memo: $('memo').value, images, event: store.get('event'), dupMode, mergeRow, mailMode: mailMode(), attach });
     if (j.duplicate) {
       matches = j.matches;
       $('dupList').innerHTML = '';
@@ -301,9 +336,9 @@ async function doSave(dupMode, mergeRow) {
         : mode === 'app' ? '。下の「メールアプリで開く」でお礼メールを作成してください'
         : j.draft ? (j.noAddress ? '。Gmail下書きを作成(宛先が未取得のため、Gmailで入力してください)' : '。Gmail下書きを作成済み')
         : '(Gmail下書きは作成されませんでした。Outlook等をお使いなら、設定の「メール方式」を「メールアプリで開く」に変更してください)';
-      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') + tail);
+      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') + tail + (j.skipped && j.skipped.length ? '(資料「' + j.skipped.join('」「') + '」は、付けられませんでした)' : ''));
       listLoaded = false; bumpCount(); resetForm();
-      if (mode === 'app' && d.body) showMailBox(d); else window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (mode === 'app' && d.body) showMailBox({ ...d, body: d.body + docLinks(attach) }); else window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   } catch (e) { status(e.message, true); }
   setBusy(false);
@@ -382,7 +417,7 @@ function buildDetail(box, it) {
 
   // メール文面と下書き
   if (it.body) {
-    const l = el('div', 'sub', 'お礼メール文面'); l.style.marginTop = '10px';
+    const l = el('div', 'sub', 'お礼メール文面' + (it.attach ? '(添付: ' + it.attach.replace(/\n/g, '、') + ')' : '')); l.style.marginTop = '10px';
     const ta = el('textarea'); ta.readOnly = true; ta.value = (it.subject ? '件名: ' + it.subject + '\n\n' : '') + it.body;
     box.append(l, ta);
     const row = el('div', 'row'); row.style.marginTop = '8px';
