@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>展示会名刺メモ | 名刺を撮って話した内容を話すだけ。お礼メールの下書きまで</title>
+<meta name="description" content="展示会で受け取った名刺を撮影し、話した内容を入力するだけ。AIが名刺を読み取って表に登録し、商談内容に合わせたお礼メールの下書きを作ります。">
+<style>
+:root{--bg:#fff;--fg:#1c2330;--mut:#5b6678;--pri:#1a56db;--priD:#1342a8;--soft:#f3f6fd;--line:#dfe4ee;--ok:#0e7c4a}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141b;--fg:#e8ecf3;--mut:#a3adbd;--pri:#6b9bff;--priD:#8bb0ff;--soft:#161d28;--line:#2a3443;--ok:#4cc38a}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+section{padding:56px 0}
+section.alt{background:var(--soft)}
+h1{font-size:clamp(26px,5.5vw,42px);line-height:1.35;margin:0 0 16px}
+h2{font-size:clamp(22px,4vw,30px);line-height:1.4;margin:0 0 8px;text-align:center}
+.lead{color:var(--mut);text-align:center;margin:0 auto 32px;max-width:640px}
+.btn{display:inline-block;background:var(--pri);color:#fff;text-decoration:none;font-weight:700;padding:14px 28px;border-radius:12px}
+.btn.ghost{background:transparent;color:var(--pri);border:2px solid var(--pri)}
+.btn:hover{filter:brightness(.92)}
+header.top{padding:14px 0;border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;justify-content:space-between;align-items:center}
+header.top b{font-size:17px}
+.hero{padding:48px 0 56px}
+.hero .wrap{display:grid;gap:32px;align-items:center}
+@media(min-width:760px){.hero .wrap{grid-template-columns:1.2fr 1fr}}
+.tag{display:inline-block;font-size:13px;font-weight:700;color:var(--pri);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:2px 12px;margin-bottom:12px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.note{font-size:13px;color:var(--mut)}
+/* phone mock */
+.phone{width:min(280px,100%);margin:0 auto;border:8px solid var(--fg);border-radius:32px;background:var(--bg);padding:14px 12px;box-shadow:0 12px 32px rgba(0,0,0,.15)}
+.phone .row{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;line-height:1.5}
+.phone .row b{display:block;font-size:11px;color:var(--mut);font-weight:600}
+.phone .pill{display:inline-block;background:var(--pri);color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700}
+.grid{display:grid;gap:16px}
+@media(min-width:720px){.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:20px}
+section.alt .card{background:var(--bg)}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0;color:var(--mut);font-size:15px}
+.num{display:inline-flex;width:30px;height:30px;border-radius:50%;background:var(--pri);color:#fff;font-weight:700;align-items:center;justify-content:center;margin-bottom:8px}
+.ic{font-size:26px;margin-bottom:4px}
+ul.chk{list-style:none;padding:0;margin:0}
+ul.chk li{padding-left:28px;position:relative;margin:6px 0}
+ul.chk li::before{content:"✓";position:absolute;left:0;color:var(--ok);font-weight:700}
+.price{text-align:center}
+.price .amt{font-size:44px;font-weight:800;line-height:1.2}
+.price .amt small{font-size:16px;font-weight:600;color:var(--mut)}
+.price.feat{border:2px solid var(--pri)}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+th{background:var(--soft);width:34%}
+details{border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0;background:var(--bg)}
+summary{cursor:pointer;font-weight:700}
+details p{margin:8px 0 0;color:var(--mut);font-size:15px}
+footer{padding:32px 0;border-top:1px solid var(--line);font-size:13px;color:var(--mut);text-align:center}
+footer a{color:var(--mut);margin:0 8px}
+.warnbox{border:1px solid var(--line);border-left:4px solid var(--pri);background:var(--soft);border-radius:8px;padding:14px 16px;font-size:14px;color:var(--mut)}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap"><b>📇 展示会名刺メモ</b><a class="btn" href="#buy" style="padding:8px 16px;font-size:14px">購入する</a></div></header>
+
+<!-- ヒーロー -->
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="tag">展示会・商談の「あと」を楽にする</span>
+      <h1>名刺を撮って、話した内容を入れるだけ。<br>お礼メールの下書きまで自動で。</h1>
+      <p class="lead" style="text-align:left;margin:0">展示会で受け取った名刺をスマホで撮影し、商談メモを音声やテキストで入力。AIが名刺を読み取ってスプレッドシートに登録し、<b>話した内容に合わせたお礼メール</b>をGmailの下書きに作ります。</p>
+      <div class="cta">
+        <a class="btn" href="#buy">購入する</a>
+        <a class="btn ghost" href="#flow">使い方を見る</a>
+      </div>
+      <p class="note" style="margin-top:12px">月額料金なしの買い切り。メールは自動送信されません(下書きを確認して、自分で送信します)。</p>
+    </div>
+    <div class="phone" aria-label="アプリ画面のイメージ">
+      <div class="row"><b>① 名刺を撮影</b>📷 表面 ／ 裏面</div>
+      <div class="row"><b>② 話した内容</b>検査工程の自動化に関心。来月デモ希望。</div>
+      <div style="text-align:center;margin:10px 0"><span class="pill">AIで解析する</span></div>
+      <div class="row"><b>③ 確認・修正</b>株式会社〇〇 部長 佐藤 様<br><span style="color:var(--ok)">温度感: 高</span></div>
+      <div class="row"><b>お礼メール(下書き)</b>この度は弊社ブースにお立ち寄りいただき…</div>
+    </div>
+  </div>
+</section>
+
+<!-- 課題 -->
+<section class="alt">
+  <div class="wrap">
+    <h2>展示会のあと、こんなことで困っていませんか</h2>
+    <p class="lead">名刺は集まったのに、フォローが後回しになる。そんな「あと」の手間を減らします。</p>
+    <div class="grid g3">
+      <div class="card"><div class="ic">🗂️</div><h3>名刺の入力が面倒</h3><p>数十〜数百枚の名刺を、表に打ち込む時間が取れない。</p></div>
+      <div class="card"><div class="ic">🧠</div><h3>何を話したか忘れる</h3><p>数日たつと、誰と何を話したか思い出せず、フォローが当たり障りのない文面になる。</p></div>
+      <div class="card"><div class="ic">✉️</div><h3>お礼メールが書けない</h3><p>一通ずつ文面を考えるうちに、1週間が過ぎてしまう。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 使い方 -->
+<section id="flow">
+  <div class="wrap">
+    <h2>使い方は 4 ステップ</h2>
+    <p class="lead">ブース対応の合間に、スマホ1台で。</p>
+    <div class="grid g2">
+      <div class="card"><div class="num">1</div><h3>名刺を撮影</h3><p>表面と、必要なら裏面を撮影。英語表記や追加情報もまとめて読み取ります。</p></div>
+      <div class="card"><div class="num">2</div><h3>話した内容を入力</h3><p>🎤 「録音して話す」ボタンで、商談のあとに30秒ほど話すだけ(長く話しても途切れず、文字になります)。テキスト入力もできます。</p></div>
+      <div class="card"><div class="num">3</div><h3>AIが整理</h3><p>氏名・会社名・メール・電話などを項目ごとに抽出し、商談の要約と次のアクション、見込み度(温度感)を作ります。</p></div>
+      <div class="card"><div class="num">4</div><h3>登録&下書き</h3><p>確認して直したら登録。スプレッドシートに1行追加され、Gmailにお礼メールの下書きができます。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 機能 -->
+<section class="alt">
+  <div class="wrap">
+    <h2>主な機能</h2>
+    <div class="grid g3" style="margin-top:24px">
+      <div class="card"><div class="ic">📷</div><h3>名刺の読み取り</h3><p>AIが名刺画像から項目を抽出。表裏の2面に対応。登録前に画面で確認・修正できます。</p></div>
+      <div class="card"><div class="ic">✍️</div><h3>お礼メールの下書き</h3><p>話した内容に具体的に触れた文面を作成。丁寧さ・長さ・署名・追加指示を設定できます。</p></div>
+      <div class="card"><div class="ic">📊</div><h3>スプレッドシートに自動登録</h3><p>あなたのGoogleスプレッドシートに記録。温度感・対応状況はプルダウンで管理できます。</p></div>
+      <div class="card"><div class="ic">🔎</div><h3>重複チェック</h3><p>同じ人が登録済みなら知らせ、既存の行に追記するか、別人として登録するか選べます。</p></div>
+      <div class="card"><div class="ic">📥</div><h3>撮り溜め(保留)</h3><p>混雑時や電波が悪いときは、いったん保留して次の方へ。あとでまとめて処理できます。</p></div>
+      <div class="card"><div class="ic">📱</div><h3>スマホで一覧・検索</h3><p>登録した名刺を、あとからスマホで検索・確認。対応状況の更新や、下書きの再作成もできます。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 安心 -->
+<section>
+  <div class="wrap">
+    <h2>データはあなたの環境に</h2>
+    <p class="lead">名刺の情報は、販売元のサーバーには保存されません。</p>
+    <div class="grid g2">
+      <div class="card">
+        <h3>しくみ</h3>
+        <ul class="chk">
+          <li>データの保存先は、<b>あなた自身のGoogleアカウント</b>(スプレッドシート・ドライブ・Gmail)</li>
+          <li>AIの利用は、<b>あなた自身のAnthropic APIキー</b>で行います</li>
+          <li>販売元には、名刺画像も商談メモも送られません</li>
+          <li>メールは自動送信されず、<b>必ず自分で確認してから送信</b></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>ご利用にあたって</h3>
+        <ul class="chk">
+          <li>名刺画像と商談メモは、AI処理のため<b>AnthropicのAPIに送信</b>されます</li>
+          <li>名刺は個人情報です。貴社の取り扱いルールに沿ってご利用ください</li>
+          <li>音声入力は、端末(ブラウザ)の音声認識機能を使います。音声は、端末の提供元(GoogleやApple等)で処理される場合があります</li>
+          <li>AIの読み取り・文面には誤りが含まれる場合があります。登録・送信前に必ず確認してください</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 料金 -->
+<section class="alt" id="buy">
+  <div class="wrap">
+    <h2>料金</h2>
+    <p class="lead">月額料金はありません。買い切りです。</p>
+    <p class="note" style="text-align:center">お申込みは、メールで承ります。内容を確認のうえ、請求書(銀行振込)をお送りします。</p>
+    <div class="grid g2">
+      <div class="card price feat">
+        <h3>セルフ設置プラン</h3>
+        <div class="amt">14,800円<small>(税抜・買い切り)<br>税込16,280円</small></div>
+        <ul class="chk" style="text-align:left;margin:16px 0">
+          <li>アプリ一式(GASコード)+設置マニュアル</li>
+          <li>スプレッドシートをコピーして、APIキーを貼るだけの「かんたん導入」</li>
+          <li>ご自身のペースで、約30分で設置</li>
+          <li>メールでの設置サポート</li>
+          <li>3人までご利用いただけます(4人目から1人あたり+2,500円(税込2,750円)、30人まで・上限79,800円(税込87,780円)。表記は税抜)</li>
+          <li>購入から1年間は、改善版を無償で提供</li>
+        </ul>
+        <a class="btn" href="mailto:cross-star@crosstech.osaka?subject=%E3%80%90%E3%81%8A%E7%94%B3%E8%BE%BC%E3%81%BF%E3%80%91%E5%B1%95%E7%A4%BA%E4%BC%9A%E5%90%8D%E5%88%BA%E3%83%A1%E3%83%A2%20%E3%82%BB%E3%83%AB%E3%83%95%E8%A8%AD%E7%BD%AE%E3%83%97%E3%83%A9%E3%83%B3&body=%E3%81%8A%E5%90%8D%E5%89%8D%3A%0A%E4%BC%9A%E7%A4%BE%E5%90%8D%3A%0A%E3%81%8A%E9%9B%BB%E8%A9%B1%3A%0A%E3%81%94%E5%88%A9%E7%94%A8%E4%BA%BA%E6%95%B0%283%E4%BA%BA%E3%81%BE%E3%81%A7%E5%9F%BA%E6%9C%AC%E3%83%BB4%E4%BA%BA%E7%9B%AE%E3%81%8B%E3%82%89%2B2%2C500%E5%86%86%29%3A%0A%E3%81%94%E5%B8%8C%E6%9C%9B%E3%81%AE%E3%83%97%E3%83%A9%E3%83%B3%3A%20%E3%82%BB%E3%83%AB%E3%83%95%E8%A8%AD%E7%BD%AE%E3%83%97%E3%83%A9%E3%83%B3%2814%2C800%E5%86%86%E3%83%BB%E7%A8%8E%E6%8A%9C%29%0A%E3%81%94%E8%AB%8B%E6%B1%82%E6%9B%B8%E3%81%AE%E5%AE%9B%E5%90%8D%3A%0A">メールで申し込む</a>
+      </div>
+      <div class="card price">
+        <h3>設置おまかせプラン</h3>
+        <div class="amt">+30,000円<small>(税抜・本体とは別)<br>税込33,000円</small></div>
+        <ul class="chk" style="text-align:left;margin:16px 0">
+          <li>Google Meetの画面共有で、Googleアカウント・APIキーの設定をご一緒に</li>
+          <li>スマホへの設定、動作確認まで</li>
+          <li>ITが得意でない方におすすめ</li>
+        </ul>
+        <a class="btn ghost" href="mailto:cross-star@crosstech.osaka?subject=%E3%80%90%E3%81%8A%E7%94%B3%E8%BE%BC%E3%81%BF%E3%80%91%E5%B1%95%E7%A4%BA%E4%BC%9A%E5%90%8D%E5%88%BA%E3%83%A1%E3%83%A2%20%E8%A8%AD%E7%BD%AE%E3%81%8A%E3%81%BE%E3%81%8B%E3%81%9B%E3%83%97%E3%83%A9%E3%83%B3&body=%E3%81%8A%E5%90%8D%E5%89%8D%3A%0A%E4%BC%9A%E7%A4%BE%E5%90%8D%3A%0A%E3%81%8A%E9%9B%BB%E8%A9%B1%3A%0A%E3%81%94%E5%88%A9%E7%94%A8%E4%BA%BA%E6%95%B0%283%E4%BA%BA%E3%81%BE%E3%81%A7%E5%9F%BA%E6%9C%AC%E3%83%BB4%E4%BA%BA%E7%9B%AE%E3%81%8B%E3%82%89%2B2%2C500%E5%86%86%29%3A%0A%E3%81%94%E5%B8%8C%E6%9C%9B%E3%81%AE%E3%83%97%E3%83%A9%E3%83%B3%3A%20%E3%82%BB%E3%83%AB%E3%83%95%E8%A8%AD%E7%BD%AE%E3%83%97%E3%83%A9%E3%83%B3%20%2B%20%E8%A8%AD%E7%BD%AE%E3%81%8A%E3%81%BE%E3%81%8B%E3%81%9B%E3%83%97%E3%83%A9%E3%83%B3%28%2B30%2C000%E5%86%86%E3%83%BB%E7%A8%8E%E6%8A%9C%29%0A%E3%81%94%E8%AB%8B%E6%B1%82%E6%9B%B8%E3%81%AE%E5%AE%9B%E5%90%8D%3A%0A">メールで申し込む</a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px">
+      <h3>別途かかる費用(購入価格には含まれません)</h3>
+      <table>
+        <tr><th>Anthropic APIの利用料</th><td>AIを使った分だけ、<b>Anthropic社へ直接</b>お支払い(前払いクレジット・従量課金)。名刺の処理枚数に応じて増えます。最新の単価はAnthropicの料金ページでご確認ください。利用額の上限も設定できます。</td></tr>
+        <tr><th>Claude(チャット)の月額プラン</th><td><b>不要です。</b>お支払いは、Anthropic Console の「APIクレジット」だけです。すでにClaude ProやMaxをご契約の方は、そのまま続けられます(APIは別のお支払いです)。</td></tr>
+        <tr><th>Googleアカウント</th><td>個人のGoogleアカウント(Gmail)なら無料(利用回数に上限あり)。会社・学校のGoogle Workspaceアカウントは、管理者の設定で、公開や外部通信が制限され、使えない場合があります。個人のGmailをおすすめします。</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 必要なもの -->
+<section>
+  <div class="wrap">
+    <h2>ご用意いただくもの</h2>
+    <div class="grid g2" style="margin-top:24px">
+      <div class="card"><ul class="chk"><li>Googleアカウント(Gmail)</li><li>パソコン(設置時のみ)</li><li>iPhone(Safari)または Android(Chrome)</li></ul></div>
+      <div class="card"><ul class="chk"><li>クレジットカード(Anthropic APIの前払い用)</li><li>設置の時間 約30分</li><li>名刺とスマホ</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="alt">
+  <div class="wrap" style="max-width:760px">
+    <h2>よくある質問</h2>
+    <div style="margin-top:24px">
+      <details><summary>パソコンが苦手でも設置できますか?</summary><p>マニュアルは画面の順に進める形です。不安な方は、画面共有で一緒に設定する「設置おまかせプラン」をご利用ください。</p></details>
+      <details><summary>月額料金はかかりますか?</summary><p>本アプリに月額料金はありません。ただし、AIの利用料として、Anthropic社に従量課金のお支払い(API利用料)が発生します。</p></details>
+      <details><summary>名刺の情報は、販売元に送られますか?</summary><p>いいえ。データは、あなたのGoogleアカウントと、あなた自身のAnthropic APIキーを通じて処理されます。販売元のサーバーには保存されません。</p></details>
+      <details><summary>Outlookなど、Gmail以外のメールでも使えますか?</summary><p>はい。名刺の読み取り・登録、お礼メールの文面作成は、メールの種類に関係なく使えます。Gmail以外の方は、登録後に「メールアプリで開く」ボタンで、宛先・件名・本文が入った作成画面を、スマホのメールアプリ(Outlookなど)で開けます。ただし、Gmailの「下書き」への自動保存はできません。なお、設置にはGoogleアカウントが必要です。個人のGoogleアカウント(Gmail)をおすすめします。会社・学校のGoogle Workspaceアカウントは、管理者の設定で使えない場合があります。</p></details>
+      <details><summary>メールは自動で送られますか?</summary><p>いいえ。Gmailの「下書き」に作成されるだけです。内容を確認・修正して、ご自身で送信してください。</p></details>
+      <details><summary>読み取りの精度は?</summary><p>画像の状態(明るさ・ピント・デザイン)によって変わり、誤りが含まれる場合があります。登録前に確認画面で必ず内容を確認し、直せるようにしています。</p></details>
+      <details><summary>複数人で使えますか?</summary><p>1つの設置(GAS・スプレッドシート)を、合言葉を共有した複数のスマホから使うことはできます。基本は3人まで。4人目から1人あたり+2,500円(税抜・税込2,750円)、30人まで・上限79,800円(税抜・税込87,780円)です。詳しくは、利用規約をご確認ください。</p></details>
+      <details><summary>アップデートはありますか?</summary><p>購入から1年間は、不具合修正と機能追加の改善版を無償で提供します。更新は、マニュアルの手順で、コードを貼り替えます。</p></details>
+      <details><summary>商談中の会話を録音して、要約できますか?</summary><p>現在は、会話そのものの録音・文字起こしには対応していません。商談のあとに、「録音して話す」ボタンで内容を話すと、端末の音声認識で文字になり、AIが要約・温度感の判定をします。会場の騒音の影響が少なく、お客様の同意も要りません。</p></details>
+      <details><summary>設置おまかせプランは、どのように行いますか?</summary><p>Google Meet(画面共有)で行います。お客様のパソコンで、お客様ご自身が操作し、私たちは画面を見ながらご案内します。遠隔操作はしません。APIキーなどは、お客様が入力し、当方は記録・保存しません。録画もしません。お客様に必要なものは、設置に使うGoogleアカウントだけです(アプリのインストールは不要)。</p></details>
+      <details><summary>英語の名刺にも対応していますか?</summary><p>表面・裏面の画像から読み取れる範囲で対応します。精度は画像の状態によります。</p></details>
+      <details><summary>返金はできますか?</summary><p>デジタル商品のため、提供後のお客様都合による返品・返金はできません。ただし、重大な不具合を、お問い合わせから14日以内に解決できない場合は、返金します。詳しくは、特定商取引法に基づく表記をご確認ください。</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- 最後のCTA -->
+<section>
+  <div class="wrap" style="text-align:center">
+    <h2>展示会のあとの時間を、取り戻す</h2>
+    <p class="lead">名刺の入力とお礼メールの下書きを、スマホ1台で。</p>
+    <a class="btn" href="#buy">購入する</a>
+    <p class="warnbox" style="margin:32px auto 0;max-width:640px;text-align:left">ご注意: AIによる読み取り・文面作成には誤りが含まれる場合があります。登録内容とメール文面は、必ずご自身で確認してからご利用ください。名刺画像・商談メモはAI処理のためAnthropicのAPIに送信されます。</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <a href="tokushoho.html">特定商取引法に基づく表記</a>
+      <a href="terms.html">利用規約</a>
+      <a href="privacy.html">プライバシーポリシー</a>
+      <a href="mailto:cross-star@crosstech.osaka">お問い合わせ</a>
+    </p>
+    <p>© 展示会名刺メモ 株式会社クロステック</p>
+    <p>「Claude」「Anthropic」は Anthropic, PBC の商標です。「Google」「Gmail」は Google LLC の商標です。本サービスは各社が提供・推奨するものではありません。</p>
+  </div>
+</footer>
+</body>
+</html>
