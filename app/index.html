@@ -3,29 +3,36 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1a56db">
+<meta name="theme-color" content="#1f4fd8">
+<meta name="color-scheme" content="light">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg">
 <link rel="apple-touch-icon" href="icons/icon.svg">
-<title>名刺メモ</title>
+<title>名刺ブースト</title>
 <style>
-:root{--bg:#f5f7fa;--fg:#1c2330;--card:#fff;--line:#d9dee7;--pri:#1a56db;--mut:#667085;--err:#c0392b;--warn:#b45309;--warnbg:#fff7e6}
-@media (prefers-color-scheme:dark){:root{--bg:#10141b;--fg:#e8ecf3;--card:#1a212c;--line:#2e3846;--pri:#5b8cff;--mut:#9aa5b5;--warn:#f5b042;--warnbg:#2b2312}}
+:root{--bg:#f4f6fb;--fg:#14213d;--card:#fff;--line:#e2e7f1;--pri:#1f4fd8;--pri2:#1639a8;--chip:#e6edff;--mut:#667089;--err:#c0392b;--warn:#b45309;--warnbg:#fff7e6;--hi:#e8590c;--sh:0 2px 10px rgba(20,40,90,.07)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
-header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top)) 0 8px}
-h1{font-size:18px;margin:0}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;padding:0 16px calc(96px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top)) 0 8px}
+header .brand{display:flex;align-items:center;gap:9px;flex:1;white-space:nowrap}
+header .brand svg{flex:none}
+.chips{display:flex;gap:8px;align-items:center;margin:2px 0 4px}
+#btnSettings{white-space:nowrap}
+h1{font-size:19px;margin:0;font-weight:800;letter-spacing:.01em}
 .badge{font-size:12px;color:var(--mut)}
-section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
-h2{font-size:14px;margin:0 0 8px;color:var(--mut);font-weight:600}
-label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
-input,textarea,select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px}
+#count{background:var(--chip);color:var(--pri);border-radius:20px;padding:3px 11px;font-weight:700}
+#count:empty{display:none}
+section{background:var(--card);border-radius:16px;padding:14px 16px;margin:12px 0;box-shadow:var(--sh)}
+h2{font-size:15px;margin:0 0 10px;color:var(--fg);font-weight:800}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px;font-weight:600}
+input,textarea,select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--pri);outline-offset:0;border-color:transparent}
 textarea{min-height:120px;resize:vertical}
-button{font:inherit;border:0;border-radius:12px;padding:12px 16px;background:var(--pri);color:#fff;font-weight:600}
-button.sec{background:transparent;color:var(--pri);border:1px solid var(--pri)}
-button.sm{padding:6px 12px;font-size:14px}
+button{font:inherit;border:0;border-radius:14px;padding:13px 16px;background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff;font-weight:700;box-shadow:0 6px 14px rgba(31,79,216,.22)}
+button.sec{background:var(--chip);color:var(--pri);border:0;box-shadow:none}
+button.sm{padding:7px 13px;font-size:14px;border-radius:12px}
 button.mic{width:100%;padding:16px;font-size:17px}
-button.mic.rec{background:var(--err);border-color:var(--err);color:#fff}
+button.mic.rec{background:var(--err);color:#fff}
 .miclive{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:15px}
 .dot{width:12px;height:12px;border-radius:50%;background:var(--err);animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.25}}
@@ -34,31 +41,55 @@ button:disabled{opacity:.5}
 .row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .shots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.shot{border:1px dashed var(--line);border-radius:12px;padding:8px;text-align:center;min-height:110px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.shot{border:1.5px dashed var(--pri);border-radius:14px;padding:8px;text-align:center;min-height:110px;display:flex;flex-direction:column;gap:6px;justify-content:center}
 .shot img{max-width:100%;max-height:140px;border-radius:8px;object-fit:contain;margin:0 auto;display:none}
 #status{min-height:1.4em;font-size:14px;color:var(--mut)}#status.err{color:var(--err)}
-.warn{background:var(--warnbg);border:1px solid var(--warn);color:var(--fg)}
+.warn{background:var(--warnbg);box-shadow:inset 0 0 0 1px var(--warn)}
 .warn h2{color:var(--warn)}
 .item{border-top:1px solid var(--line);padding:8px 0;font-size:14px}
 .hidden{display:none}
-nav.row{margin:4px 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:10px 0}
+nav.row{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;gap:0;background:var(--card);border-top:1px solid var(--line);padding:6px 16px calc(6px + env(safe-area-inset-bottom));flex-wrap:nowrap;box-shadow:0 -4px 16px rgba(20,40,90,.08)}
+nav.row button{background:none;box-shadow:none;color:var(--pri);border-radius:12px;padding:10px 4px;font-size:15px;font-weight:800}
+nav.row button.sec{background:none;color:var(--mut);font-weight:600}
+.card{background:var(--card);border-radius:16px;padding:12px 14px;margin:10px 0;box-shadow:var(--sh)}
 .card .hd{cursor:pointer}
-.card .nm{font-weight:600}.card .sub{font-size:13px;color:var(--mut)}
-.tag{display:inline-block;font-size:12px;border-radius:8px;padding:0 8px;margin-left:6px;border:1px solid var(--line)}
-.tag.hi{color:#fff;background:#d9480f;border-color:#d9480f}.tag.mid{color:var(--warn);border-color:var(--warn)}
+.card .nm{font-weight:700}.card .sub{font-size:13px;color:var(--mut)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:20px;padding:1px 9px;margin-left:6px;background:var(--bg);color:var(--mut)}
+.tag.hi{color:#fff;background:var(--hi)}.tag.mid{color:#9a6200;background:#fff3d6}
 .detail{margin-top:10px;font-size:14px;border-top:1px solid var(--line);padding-top:8px}
 .detail dt{font-size:12px;color:var(--mut);margin-top:8px}.detail dd{margin:0;white-space:pre-wrap;word-break:break-word}
 .detail a{color:var(--pri)}
 .detail textarea{min-height:150px;font-size:14px}
+h2 .n{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--pri);color:#fff;font-size:12px;margin-right:8px;vertical-align:1px}
+#evChip{background:var(--chip);color:var(--pri);border-radius:20px;padding:3px 10px;font-weight:600;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#evChip:empty,#totalChip:empty{display:none}
+#totalChip{background:var(--chip);color:var(--pri);border-radius:20px;padding:3px 11px;font-weight:700}
+.fl{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.fl::-webkit-scrollbar{display:none}
+.fl button{flex:none;padding:6px 12px;font-size:13px;border-radius:20px;background:var(--bg);color:var(--mut);box-shadow:none;font-weight:600}
+.fl button.on{background:var(--pri);color:#fff;box-shadow:none;font-weight:700}
+nav.row button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px}
+nav.row button svg{display:block}
+.card.li{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.card.li .hd{flex:1;display:flex;align-items:center;gap:12px}
+.card.li .detail{flex-basis:100%}
+.av{width:42px;height:42px;border-radius:50%;background:var(--chip);color:var(--pri);font-weight:800;display:grid;place-items:center;font-size:17px;flex:none}
+.av.c1{background:#fde9d9;color:#c2570c}.av.c2{background:#e0f2e9;color:#1c7a4b}.av.c3{background:#ece8fb;color:#5b45c7}
+.card.li .g{flex:1;min-width:0}.card.li .meta{font-size:11px;color:var(--mut)}
+.card.li .r{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.stt{font-size:11px;font-weight:700;color:#b42318;background:#fde8e6;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.stt.ok{color:#1c7a4b;background:#e0f2e9}.stt.pr{color:#1d4fbf;background:#e3ecfc}
+button.danger{color:#b42318;background:#fde8e6}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:9;background:#14213d;color:#fff;border-radius:14px;padding:12px 16px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.toast.err{background:#b42318}
 </style>
 </head>
 <body>
 <header>
-  <h1>📇 名刺メモ</h1>
-  <span class="badge" id="count"></span>
+  <div class="brand"><svg width="30" height="30" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#1f4fd8"/><rect x="10" y="13" width="24" height="17" rx="3" fill="#fff"/><rect x="14" y="18" width="9" height="2.6" rx="1.3" fill="#1f4fd8"/><rect x="14" y="23" width="15" height="2.6" rx="1.3" fill="#1f4fd8" opacity=".5"/><circle cx="35" cy="33" r="8" fill="#ff7a1a"/><path d="M35 38V28.5M30.8 32.6L35 28.4l4.2 4.2" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><h1>名刺ブースト</h1></div>
   <button class="sec sm" id="btnSettings">設定</button>
 </header>
+<div class="chips"><span class="badge" id="evChip"></span><span class="badge" id="count"></span><span class="badge" id="totalChip"></span></div>
 
 <section id="settings" class="hidden">
   <h2>かんたん設定</h2>
@@ -92,8 +123,8 @@ nav.row{margin:4px 0}
 </section>
 
 <nav class="row">
-  <button id="tabReg">登録</button>
-  <button id="tabList" class="sec">一覧</button>
+  <button id="tabReg"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>登録</span></button>
+  <button id="tabList" class="sec"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg><span>一覧</span></button>
 </nav>
 
 <div id="viewReg">
@@ -103,7 +134,7 @@ nav.row{margin:4px 0}
 </section>
 
 <section>
-  <h2>① 名刺を撮影(裏面は任意)</h2>
+  <h2><i class="n">1</i>名刺を撮影(裏面は任意)</h2>
   <input id="file1" type="file" accept="image/*" capture="environment" class="hidden">
   <input id="file2" type="file" accept="image/*" capture="environment" class="hidden">
   <div class="shots">
@@ -113,7 +144,7 @@ nav.row{margin:4px 0}
 </section>
 
 <section>
-  <h2>② 話した内容</h2>
+  <h2><i class="n">2</i>話した内容</h2>
   <textarea id="memo" placeholder="例: 工場の検査工程の自動化に関心。来月デモ希望。担当は部長の佐藤さん。"></textarea>
   <div style="margin-top:8px">
     <button class="sec mic" id="btnMic">🎤 録音して話す</button>
@@ -151,7 +182,7 @@ nav.row{margin:4px 0}
 </section>
 
 <section id="result" class="hidden">
-  <h2>③ 確認・修正</h2>
+  <h2><i class="n">3</i>確認・修正</h2>
   <div class="grid">
     <div><label>氏名</label><input id="f_name"></div>
     <div><label>ふりがな</label><input id="f_kana"></div>
@@ -168,6 +199,7 @@ nav.row{margin:4px 0}
   <label>次のアクション</label><input id="f_next">
   <label>メール件名</label><input id="f_subject">
   <label>メール本文(下書き)</label><textarea id="f_body" style="min-height:260px"></textarea>
+  <div id="docBox" class="hidden"><label>添付する資料(シート「資料」に登録したもの)</label><div id="docList"></div><p class="badge" id="docNote" style="margin:6px 0 0"></p></div>
   <div class="row" style="margin-top:12px"><button id="btnSave">スプレッドシート登録 + Gmail下書き</button></div>
 </section>
 
@@ -179,11 +211,23 @@ nav.row{margin:4px 0}
       <input id="q" type="search" placeholder="検索(氏名・会社・内容・展示会)" style="flex:3">
       <button class="sec" id="btnReload" style="flex:1">更新</button>
     </div>
+    <div class="fl" id="stChips"></div>
+    <div class="row" style="margin-top:8px;align-items:center;flex-wrap:nowrap">
+      <label for="sortSel" style="margin:0;flex:none;font-size:13px">並び順</label>
+      <select id="sortSel" style="flex:1;padding:8px 10px">
+        <option value="new">日時(新しい順)</option>
+        <option value="old">日時(古い順)</option>
+        <option value="temp">見込み度(高→低)</option>
+        <option value="name">氏名(あいうえお順)</option>
+        <option value="co">会社名(あいうえお順)</option>
+      </select>
+    </div>
     <p class="badge" id="listInfo" style="margin:8px 0 0"></p>
   </section>
   <div id="listBox"></div>
 </div>
 
-<script src="app.js"></script>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<script src="app.js?v=8"></script>
 </body>
 </html>

@@ -7,7 +7,15 @@ const images = { front: '', back: '' };
 let busy = false;
 let matches = [];
 
-function status(msg, err) { const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+let toastT = null;
+function status(msg, err) {
+  const s = $('status'); s.textContent = msg; s.className = err ? 'err' : '';
+  // 一覧の画面では、上の「状態」の行が隠れているため、画面の下に、一時的に表示する
+  const t = $('toast'); if (!t) return;
+  clearTimeout(toastT);
+  if (!msg || $('viewList').classList.contains('hidden')) { t.classList.add('hidden'); return; }
+  t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); toastT = setTimeout(() => t.classList.add('hidden'), err ? 12000 : 5000);
+}
 function setBusy(b) { busy = b; ['btnAnalyze', 'btnSave', 'btnHold', 'btnMerge', 'btnNew'].forEach(i => $(i).disabled = b); }
 
 // ---------- 設定 ----------
@@ -18,7 +26,7 @@ if (!store.get('url')) $('settings').classList.remove('hidden');
 $('btnSettings').onclick = () => $('settings').classList.toggle('hidden');
 $('btnSaveCfg').onclick = () => {
   Object.entries(CFG).forEach(([k, id]) => store.set(k, k === 'token' || k === 'sig' ? $(id).value : $(id).value.trim()));
-  $('settings').classList.add('hidden'); status('設定を保存しました');
+  $('settings').classList.add('hidden'); status('設定を保存しました'); if (typeof showEv === 'function') showEv();
 };
 $('btnTest').onclick = async () => {
   store.set('url', $('cfgUrl').value.trim()); store.set('token', $('cfgToken').value);
@@ -29,7 +37,7 @@ $('btnTest').onclick = async () => {
     if (j.net) return status('⚠ 接続OK。ただし、このGoogleアカウントでは、AIへの通信(UrlFetch)が使えません(' + String(j.net).slice(0, 90) + ')。24時間後にもう一度試すか、別のGoogleアカウントで設置してください', true);
     const sel = $('cfgMail').value;
     if (j.gmail === false && sel === 'gmail') return status('⚠ 接続OK。ただし、このGoogleアカウントではGmailが使えません。「メール方式」を「メールアプリで開く」にしてください', true);
-    status('✅ 接続OK(APIキー設定済み・Gmail' + (j.gmail === false ? '利用不可' : '利用可') + ')');
+    status('✅ 接続OK(APIキー設定済み・Gmail' + (j.gmail === false ? '利用不可' : '利用可') + '・GASの版: ' + (j.version || '古い版(v3以前)') + ')');
   } catch (e) { status(e.message, true); }
 };
 // ---------- かんたん設定(スプレッドシートのメニューで作った「設定コード」を貼るだけ) ----------
@@ -100,12 +108,47 @@ function showMailBox(d) {
 $('btnMailCopy').onclick = () => { if (mailCtx) copyText((mailCtx.subject ? '件名: ' + mailCtx.subject + '\n\n' : '') + mailCtx.body); };
 $('btnMailClose').onclick = () => { $('mailDone').classList.add('hidden'); mailCtx = null; status(''); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
+// ---------- 資料の自動添付(GASのシート「資料」) ----------
+let docsCache = null, docsTouched = {};
+async function loadDocs() {
+  if (docsCache) return docsCache;
+  try { docsCache = (await api({ action: 'docs' })).docs || []; } catch (e) { if (/unknown action|不明/i.test(e.message)) docsCache = []; else return []; }   // 古いGASでは、この機能は出ない
+  return docsCache;
+}
+function docAuto(d, temp) { const a = (d.auto || '').split(','); return a.includes('全員') || a.includes(temp); }
+function renderDocs() {
+  const list = docsCache || [];
+  $('docBox').classList.toggle('hidden', !list.length);
+  $('docList').innerHTML = '';
+  list.forEach(d => {
+    const lb = el('label', 'chk'); lb.style.cssText = 'display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-weight:400';
+    const cb = el('input'); cb.type = 'checkbox'; cb.dataset.row = d.row; cb.disabled = !d.ok;
+    cb.checked = d.ok && (docsTouched[d.row] != null ? docsTouched[d.row] : docAuto(d, $('f_temp').value));
+    cb.onchange = () => { docsTouched[d.row] = cb.checked; showDocNote(); };
+    lb.append(cb, el('span', '', (d.kind === 'リンク' ? '🔗 ' : '📎 ') + d.name + (d.note ? '  ' + d.note : '')));
+    $('docList').append(lb);
+  });
+  showDocNote();
+}
+function selectedDocs() { return [...$('docList').querySelectorAll('input:checked')].map(c => +c.dataset.row); }
+function showDocNote() {
+  const n = selectedDocs().length;
+  $('docNote').textContent = !n ? '' : mailMode() === 'gmail' ? n + '件を、Gmail下書きに付けます(「リンク」は、本文の末尾に入ります)'
+    : mailMode() === 'app' ? '「メールアプリで開く」では添付できないため、リンクとして本文に入れます' : '';
+}
+$('f_temp').onchange = () => renderDocs();
+function docLinks(rows) {   // メールアプリ方式用: 選んだ資料を、本文の末尾にリンクで入れる
+  const l = (docsCache || []).filter(d => rows.includes(d.row) && d.url).map(d => '・' + d.name + '\n  ' + d.url);
+  return l.length ? '\n\n■ご参考資料\n' + l.join('\n') : '';
+}
+
 function style() { return { tone: store.get('tone') || 'standard', length: store.get('length') || 'standard', signature: store.get('sig'), extra: store.get('extra') }; }
 
 // ---------- 今日の登録数 ----------
 function today() { return new Date().toISOString().slice(0, 10); }
 function bumpCount() { const k = 'cnt_' + today(); store.set(k, String((+store.get(k) || 0) + 1)); showCount(); }
-function showCount() { $('count').textContent = '本日 ' + (+store.get('cnt_' + today()) || 0) + '件'; }
+function showEv() { $('evChip').textContent = store.get('event') || ''; }
+function showCount() { showEv(); $('count').textContent = '本日 ' + (+store.get('cnt_' + today()) || 0) + '件'; }
 showCount();
 
 // ---------- 画像(縮小してJPEG化) ----------
@@ -276,6 +319,7 @@ $('btnAnalyze').onclick = async () => {
     $('dup').classList.add('hidden');
     $('result').classList.remove('hidden'); $('result').scrollIntoView({ behavior: 'smooth' });
     status('内容を確認して登録してください');
+    docsTouched = {}; renderDocs(); loadDocs().then(renderDocs);
   } catch (e) { status(e.message, true); }
   setBusy(false);
 };
@@ -283,8 +327,8 @@ $('btnAnalyze').onclick = async () => {
 async function doSave(dupMode, mergeRow) {
   setBusy(true); status('登録中…');
   try {
-    const d = formData();
-    const j = await api({ action: 'save', data: d, memo: $('memo').value, images, event: store.get('event'), dupMode, mergeRow, mailMode: mailMode() });
+    const d = formData(), attach = selectedDocs();
+    const j = await api({ action: 'save', data: d, memo: $('memo').value, images, event: store.get('event'), dupMode, mergeRow, mailMode: mailMode(), attach });
     if (j.duplicate) {
       matches = j.matches;
       $('dupList').innerHTML = '';
@@ -301,9 +345,9 @@ async function doSave(dupMode, mergeRow) {
         : mode === 'app' ? '。下の「メールアプリで開く」でお礼メールを作成してください'
         : j.draft ? (j.noAddress ? '。Gmail下書きを作成(宛先が未取得のため、Gmailで入力してください)' : '。Gmail下書きを作成済み')
         : '(Gmail下書きは作成されませんでした。Outlook等をお使いなら、設定の「メール方式」を「メールアプリで開く」に変更してください)';
-      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') + tail);
+      status((j.merged ? '✅ 既存の行に追記しました' : '✅ 登録しました') + tail + (j.skipped && j.skipped.length ? '(資料「' + j.skipped.join('」「') + '」は、付けられませんでした)' : ''));
       listLoaded = false; bumpCount(); resetForm();
-      if (mode === 'app' && d.body) showMailBox(d); else window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (mode === 'app' && d.body) showMailBox({ ...d, body: d.body + docLinks(attach) }); else window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   } catch (e) { status(e.message, true); }
   setBusy(false);
@@ -330,25 +374,65 @@ $('btnReload').onclick = () => loadList();
 let qTimer = null;
 $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(loadList, 500); };
 
+const ST_ALL = ['未対応', 'メール送信済', '商談中', '受注', '見送り'];
+let allItems = [], listTotal = 0, stFilter = store.get('stf') || '';
+$('sortSel').value = store.get('sort') || 'new';
+$('sortSel').onchange = () => { store.set('sort', $('sortSel').value); renderList(); };
+
 async function loadList() {
   $('listInfo').textContent = '読み込み中…';
   try {
-    const j = await api({ action: 'list', q: $('q').value.trim(), limit: 50 });
+    const j = await api({ action: 'list', q: $('q').value.trim(), limit: 200 });
     statuses = j.statuses || []; listLoaded = true;
-    $('listInfo').textContent = `全${j.total}件中 ${j.items.length}件を表示(新しい順)`;
-    $('listBox').innerHTML = '';
-    j.items.forEach(it => $('listBox').append(renderCard(it)));
+    allItems = j.items || []; listTotal = j.total || 0;
+    if (!$('q').value.trim()) store.set('total', String(listTotal));
+    renderList();
   } catch (e) { $('listInfo').textContent = e.message; }
+}
+function showTotal() { const t = store.get('total'); $('totalChip').textContent = t ? '全' + t + '件' : ''; }
+showTotal();
+const kanaKey = it => String(it.kana || it.name || '').replace(/\(推定\)/g, '').replace(/[\s\u3000]/g, '');
+const SORTS = {
+  new: (a, b) => (b.date || '').localeCompare(a.date || '') || b.row - a.row,
+  old: (a, b) => (a.date || '').localeCompare(b.date || '') || a.row - b.row,
+  temp: (a, b) => ({ '高': 0, '中': 1, '低': 2 }[a.temp] ?? 3) - ({ '高': 0, '中': 1, '低': 2 }[b.temp] ?? 3) || (b.date || '').localeCompare(a.date || ''),
+  name: (a, b) => kanaKey(a).localeCompare(kanaKey(b), 'ja'),
+  co: (a, b) => String(a.company || '').localeCompare(String(b.company || ''), 'ja')
+};
+function updateChips() {
+  const cnt = {}; allItems.forEach(it => { const s = it.status || '未対応'; cnt[s] = (cnt[s] || 0) + 1; });
+  $('stChips').innerHTML = '';
+  [['', 'すべて ' + allItems.length], ...ST_ALL.map(s => [s, s + ' ' + (cnt[s] || 0)])].forEach(([v, t]) => {
+    const b = el('button', 'sec' + (stFilter === v ? ' on' : ''), t); b.type = 'button';
+    b.onclick = () => { stFilter = v; store.set('stf', v); renderList(); };
+    $('stChips').append(b);
+  });
+}
+function renderList() {
+  showTotal(); updateChips();
+  const items = allItems.filter(it => !stFilter || (it.status || '未対応') === stFilter).sort(SORTS[$('sortSel').value] || SORTS.new);
+  const q = $('q').value.trim();
+  $('listInfo').textContent = `全${listTotal}件` + (q ? ` ・ 検索「${q}」${allItems.length}件` : '') + (stFilter ? ` ・ ${stFilter}` : '') + ` ・ ${items.length}件を表示` +
+    (listTotal > allItems.length && !q ? `(新しい${allItems.length}件まで読み込み)` : '');
+  $('listBox').innerHTML = '';
+  items.forEach(it => $('listBox').append(renderCard(it)));
+  if (!items.length) $('listBox').append(el('p', 'badge', '該当する名刺はありません'));
 }
 
 function dl(parent, label, value) { if (!value) return; parent.append(el('dt', '', label), el('dd', '', value)); }
 
 function renderCard(it) {
-  const card = el('div', 'card'), hd = el('div', 'hd');
-  const nm = el('div', 'nm', `${it.company} ${it.name}`);
-  if (it.temp) nm.append(el('span', 'tag ' + (it.temp === '高' ? 'hi' : it.temp === '中' ? 'mid' : ''), it.temp));
-  hd.append(nm, el('div', 'sub', `${it.date} ${it.event} / ${it.status || '未対応'}`));
-  if (it.next) hd.append(el('div', 'sub', '次: ' + it.next));
+  const card = el('div', 'card li'), top = el('div', 'hd');
+  const av = el('div', 'av c' + ((it.name || '').charCodeAt(0) % 4), (it.name || it.company || '?').charAt(0));
+  if (av.className.endsWith('c0')) av.className = 'av';
+  const g = el('div', 'g');
+  g.append(el('div', 'nm', it.name || it.company), el('div', 'sub', it.company || ''), el('div', 'meta', `${it.date} ・ ${it.event || ''}`));
+  const r = el('div', 'r');
+  if (it.temp) r.append(el('span', 'tag ' + (it.temp === '高' ? 'hi' : it.temp === '中' ? 'mid' : ''), it.temp));
+  const st = it.status || '未対応';
+  r.append(el('span', 'stt' + (st === 'メール送信済' || st === '受注' ? ' ok' : st === '商談中' ? ' pr' : ''), st));
+  top.append(av, g, r);
+  const hd = top;
   const detail = el('div', 'detail hidden');
   let built = false;
   hd.onclick = () => { if (!built) { buildDetail(detail, it); built = true; } detail.classList.toggle('hidden'); };
@@ -374,15 +458,36 @@ function buildDetail(box, it) {
   const sel = el('select'); sel.style.marginTop = '8px';
   statuses.forEach(s => { const o = el('option', '', s); o.value = s; if (s === (it.status || '未対応')) o.selected = true; sel.append(o); });
   sel.onchange = async () => {
-    try { await api({ action: 'setStatus', id: it.id, row: it.row, status: sel.value }); it.status = sel.value; status('対応状況を更新しました'); }
+    try { await api({ action: 'setStatus', id: it.id, row: it.row, status: sel.value }); it.status = sel.value; updateChips(); status('対応状況を更新しました'); }
     catch (e) { status(e.message, true); }
   };
   const sl = el('div', 'sub', '対応状況'); sl.style.marginTop = '8px';
   box.append(sl, sel);
 
+  // 削除(確認のうえ、シートの「削除済み」に写してから消す)
+  const delRow = el('div'); delRow.style.cssText = 'margin-top:14px;text-align:right';
+  const del = el('button', 'sec sm danger', 'この名刺を削除'); del.type = 'button';
+  del.onclick = async () => {
+    if (!confirm(`「${it.company || ''} ${it.name || ''}」を削除します。\nシートの「削除済み」に残るので、間違えたときは戻せます。\nよろしいですか?`)) return;
+    del.disabled = true;
+    try {
+      await api({ action: 'delete', id: it.id, row: it.row });
+      allItems = allItems.filter(x => x !== it); listTotal = Math.max(0, listTotal - 1);
+      if (!$('q').value.trim()) store.set('total', String(listTotal));
+      renderList(); status('✅ 削除しました(シートの「削除済み」に残っています)');
+    } catch (e) {
+      if (/unknown action/i.test(e.message)) {
+        let v = '不明'; try { v = (await api({ action: 'ping' })).version || '古い版(v3以前)'; } catch {}
+        status('削除には、Code.gs v4.1以降が必要です。いま接続中のGASの版: ' + v + '。貼り替えと「新バージョンでデプロイ」を確認してください(設定のURLが、貼り替えたシートのものかも確認)', true);
+      } else status(e.message, true);
+      del.disabled = false;
+    }
+  };
+  delRow.append(del); box.append(delRow);
+
   // メール文面と下書き
   if (it.body) {
-    const l = el('div', 'sub', 'お礼メール文面'); l.style.marginTop = '10px';
+    const l = el('div', 'sub', 'お礼メール文面' + (it.attach ? '(添付: ' + it.attach.replace(/\n/g, '、') + ')' : '')); l.style.marginTop = '10px';
     const ta = el('textarea'); ta.readOnly = true; ta.value = (it.subject ? '件名: ' + it.subject + '\n\n' : '') + it.body;
     box.append(l, ta);
     const row = el('div', 'row'); row.style.marginTop = '8px';
