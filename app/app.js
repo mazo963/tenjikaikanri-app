@@ -471,7 +471,7 @@ function buildDetail(box, it) {
     if (!confirm(`「${it.company || ''} ${it.name || ''}」を削除します。\nシートの「削除済み」に残るので、間違えたときは戻せます。\nよろしいですか?`)) return;
     del.disabled = true;
     try {
-      await api({ action: 'delete', id: it.id, row: it.row });
+      await api({ action: 'deleteRow', id: it.id, row: it.row });
       allItems = allItems.filter(x => x !== it); listTotal = Math.max(0, listTotal - 1);
       if (!$('q').value.trim()) store.set('total', String(listTotal));
       renderList(); status('✅ 削除しました(シートの「削除済み」に残っています)');
