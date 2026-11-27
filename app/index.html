@@ -82,6 +82,28 @@ nav.row button svg{display:block}
 button.danger{color:#b42318;background:#fde8e6}
 .toast{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:9;background:#14213d;color:#fff;border-radius:14px;padding:12px 16px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
 .toast.err{background:#b42318}
+.hint{display:none}
+@media (min-width:720px){
+  body{max-width:1180px;margin:0 auto;padding-left:28px;padding-right:28px}
+    h1{font-size:22px}
+  button{padding:15px 20px;font-size:17px}
+  button.sm{padding:9px 16px;font-size:15px}
+  input,textarea,select{padding:13px 14px;font-size:17px}
+  textarea{min-height:100px}
+  .shot{min-height:96px}
+  .shot img{max-height:160px}
+  button.mic{padding:12px;font-size:17px}
+  section{margin:10px 0;padding:12px 16px}
+  nav.row{padding-left:max(28px,calc((100vw - 1124px)/2));padding-right:max(28px,calc((100vw - 1124px)/2))}
+  nav.row button{font-size:14px}
+  .toast{left:50%;right:auto;transform:translateX(-50%);max-width:720px;width:calc(100% - 56px)}
+}
+@media (min-width:900px){
+  .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+  .hint{display:block}
+  .right:has(section:not(.hint):not(.hidden)) .hint{display:none}
+  #listBox{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+}
 </style>
 </head>
 <body>
@@ -128,6 +150,8 @@ button.danger{color:#b42318;background:#fde8e6}
 </nav>
 
 <div id="viewReg">
+<div class="cols">
+<div class="left">
 <section id="queueBox" class="hidden">
   <h2>保留中(<span id="qn">0</span>件)</h2>
   <div id="queueList"></div>
@@ -159,6 +183,9 @@ button.danger{color:#b42318;background:#fde8e6}
   <button id="btnAnalyze" style="padding:14px">AIで解析する</button>
 </div>
 <p id="status"></p>
+</div>
+<div class="right">
+<section class="hint"><h2>ここに結果が出ます</h2><p class="badge" style="margin:0">名刺を撮って、話した内容を入れ、「AIで解析する」を押すと、お礼メールの下書きまで、ここに表示されます。</p></section>
 
 <section id="mailDone" class="hidden" style="border-color:var(--pri)">
   <h2>✉️ お礼メールを作成</h2>
@@ -204,6 +231,8 @@ button.danger{color:#b42318;background:#fde8e6}
 </section>
 
 </div>
+</div>
+</div>
 
 <div id="viewList" class="hidden">
   <section>
@@ -228,6 +257,6 @@ button.danger{color:#b42318;background:#fde8e6}
 </div>
 
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
